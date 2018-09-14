@@ -129,19 +129,28 @@ func (s *Writer) processMessage(msg interface{}, batch client.BatchPoints, tags 
 
 	switch msg.(type) {
 	case *Metric:
-		m := *msg.(*Metric)
-		point, err := client.NewPoint(m.Measurement(), mergeTags(m.Tags(), tags), m.Values(), m.Time())
-		if err != nil {
-			log.Printf("[ERROR] Can't create new point %v %v", m, err)
-			return 0
-		}
-		batch.AddPoint(point)
+		newPoint(tags, batch, msg.(*Metric))
 		ret++
+	case []Metric:
+		slice := msg.([]Metric)
+		for _, m := range slice {
+			newPoint(tags, batch, &m)
+			ret++
+		}
 	default:
 		log.Printf("[NEVER] Don't know how to cast metric, type: %T", msg)
 	}
-
 	return ret
+}
+
+func newPoint(commonTags map[string]string, batch client.BatchPoints, pm *Metric) {
+	m := *pm
+	point, err := client.NewPoint(m.Measurement(), mergeTags(m.Tags(), commonTags), m.Values(), m.Time())
+	if err != nil {
+		log.Printf("[ERROR] Can't create new point %v %v", m, err)
+		return
+	}
+	batch.AddPoint(point)
 }
 
 func newBatch(database, precision string) (client.BatchPoints, error) {
