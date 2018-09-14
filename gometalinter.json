@@ -1,0 +1,5 @@
+{
+  "Enable": ["deadcode", "unconvert","vet","vetshadow","golint","varcheck","megacheck"],
+  "Exclude": ["don't use MixedCaps in package name","declaration of \"err\" shadows declaration"],
+  "Skip": ["vendor"]
+}
