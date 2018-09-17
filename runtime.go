@@ -56,7 +56,7 @@ var (
 // and that last one does what it says on the tin.
 func CaptureRuntimeMemStatsOnce(r Registry) {
 	// t := time.Now()
-	// runtime.ReadMemStats(&memStats) // This takes 50-200us.
+	runtime.ReadMemStats(&memStats) // This takes 50-200us.
 	// runtimeMetrics.ReadMemStats.UpdateSince(t)
 
 	runtimeMetrics.MemStats.Alloc.Update(int64(memStats.Alloc))

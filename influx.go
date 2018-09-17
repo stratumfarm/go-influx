@@ -131,6 +131,10 @@ func (s *Writer) processMessage(msg interface{}, batch client.BatchPoints, tags 
 	case *Metric:
 		newPoint(tags, batch, msg.(*Metric))
 		ret++
+	case Metric:
+		metric := msg.(Metric)
+		newPoint(tags, batch, &metric)
+		ret++
 	case []Metric:
 		slice := msg.([]Metric)
 		for _, m := range slice {
@@ -160,6 +164,9 @@ func newBatch(database, precision string) (client.BatchPoints, error) {
 	})
 }
 func mergeTags(tags, commonTags map[string]string) map[string]string {
+	if tags == nil {
+		return commonTags
+	}
 	for k, v := range commonTags {
 		tags[k] = v
 	}

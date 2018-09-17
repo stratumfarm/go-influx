@@ -9,7 +9,8 @@ func NewRuntimeCollector(influx *Writer, d time.Duration) {
 	go func() {
 		for range time.Tick(d) {
 			CaptureRuntimeMemStatsOnce(r)
-			influx.Write(newRuntimeMetric(r))
+			metric := newRuntimeMetric(r)
+			influx.Write(metric)
 		}
 	}()
 }
