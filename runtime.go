@@ -159,7 +159,7 @@ func RegisterRuntimeMemStats(r Registry) {
 		log.Printf("[ERROR] registering runtime.MemStats.Alloc %v", err)
 	}
 	if err := r.Register("runtime.MemStats.BuckHashSys", runtimeMetrics.MemStats.BuckHashSys); err != nil {
-		log.Printf("[ERROR] registering %v", err)
+		log.Printf("[ERROR] registering runtime.MemStats.BuckHashSys %v", err)
 	}
 	if err := r.Register("runtime.MemStats.DebugGC", runtimeMetrics.MemStats.DebugGC); err != nil {
 		log.Printf("[ERROR] registering runtime.MemStats.DebugGC %v", err)
