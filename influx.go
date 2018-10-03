@@ -18,6 +18,7 @@ type Config struct {
 	Label         string `json:"label"`
 	BatchInterval string `json:"batch_interval"`
 	BatchCount    int    `json:"batch_count"`
+	WorkerCount   int    `json:"worker_count"`
 	Precision     string `json:"precision"`
 }
 
@@ -44,6 +45,10 @@ func NewWriter(cfg Config) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
+	//We should check precision, because it's the only reason to fail for newBatch
+	if _, err := time.ParseDuration("1" + cfg.Precision); err != nil {
+		log.Panicf("Can't parse Precision `%s`: %v", cfg.Precision, err)
+	}
 
 	w := &Writer{
 		client:        c,
@@ -55,12 +60,13 @@ func NewWriter(cfg Config) (*Writer, error) {
 		BatchCount:    cfg.BatchCount,
 		Precision:     cfg.Precision,
 	}
-	batch, err := newBatch(w.database, w.Precision)
-	if err != nil {
-		return nil, err
+	if cfg.WorkerCount < 1 {
+		cfg.WorkerCount = 1
 	}
-	w.wg.Add(1) //TODO more workers?
-	go w.worker(batch)
+	w.wg.Add(cfg.WorkerCount)
+	for i := 0; i < cfg.WorkerCount; i++ {
+		go w.worker()
+	}
 	return w, nil
 }
 
@@ -78,8 +84,8 @@ func (s *Writer) Write(p interface{}) {
 	}
 }
 
-func (s *Writer) worker(batch client.BatchPoints) {
-
+func (s *Writer) worker() {
+	batch := newBatch(s.database, s.Precision)
 	defer s.wg.Done()
 
 	tags := map[string]string{
@@ -119,7 +125,7 @@ func (s *Writer) worker(batch client.BatchPoints) {
 				log.Printf("[ERROR] Can't write to influx %v", err)
 			}
 			count = 0
-			batch, _ = newBatch(s.database, s.Precision) // Error is impossible here, because it's only if parsing is failed, but we already did it
+			batch = newBatch(s.database, s.Precision) // Error is impossible here, because it's only if parsing is failed, but we already did it
 		}
 	}
 }
@@ -127,18 +133,16 @@ func (s *Writer) worker(batch client.BatchPoints) {
 func (s *Writer) processMessage(msg interface{}, batch client.BatchPoints, tags map[string]string) int {
 	ret := 0
 
-	switch msg.(type) {
+	switch d := msg.(type) {
 	case *Metric:
-		newPoint(tags, batch, msg.(*Metric))
+		newPoint(tags, batch, *d)
 		ret++
 	case Metric:
-		metric := msg.(Metric)
-		newPoint(tags, batch, &metric)
+		newPoint(tags, batch, d)
 		ret++
 	case []Metric:
-		slice := msg.([]Metric)
-		for _, m := range slice {
-			newPoint(tags, batch, &m)
+		for _, m := range d {
+			newPoint(tags, batch, m)
 			ret++
 		}
 	default:
@@ -147,8 +151,7 @@ func (s *Writer) processMessage(msg interface{}, batch client.BatchPoints, tags 
 	return ret
 }
 
-func newPoint(commonTags map[string]string, batch client.BatchPoints, pm *Metric) {
-	m := *pm
+func newPoint(commonTags map[string]string, batch client.BatchPoints, m Metric) {
 	point, err := client.NewPoint(m.Measurement(), mergeTags(m.Tags(), commonTags), m.Values(), m.Time())
 	if err != nil {
 		log.Printf("[ERROR] Can't create new point %v %v", m, err)
@@ -157,11 +160,12 @@ func newPoint(commonTags map[string]string, batch client.BatchPoints, pm *Metric
 	batch.AddPoint(point)
 }
 
-func newBatch(database, precision string) (client.BatchPoints, error) {
-	return client.NewBatchPoints(client.BatchPointsConfig{
+func newBatch(database, precision string) client.BatchPoints {
+	c, _ := client.NewBatchPoints(client.BatchPointsConfig{
 		Database:  database,
 		Precision: precision,
 	})
+	return c
 }
 func mergeTags(tags, commonTags map[string]string) map[string]string {
 	if tags == nil {
