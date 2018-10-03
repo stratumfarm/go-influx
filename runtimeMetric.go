@@ -24,7 +24,7 @@ func (r runtimeMetric) Time() time.Time {
 	return r.time
 }
 func newRuntimeMetric(r Registry) Metric {
-	time := time.Now().UTC()
+	tm := time.Now().UTC()
 	values := make(map[string]interface{})
 	r.Each(func(name string, value interface{}) {
 		switch metric := value.(type) {
@@ -33,7 +33,7 @@ func newRuntimeMetric(r Registry) Metric {
 		}
 	})
 	return runtimeMetric{
-		time:   time,
+		time:   tm,
 		values: values,
 		tags:   nil,
 	}
