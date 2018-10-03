@@ -47,7 +47,7 @@ func NewWriter(cfg Config) (*Writer, error) {
 	}
 	//We should check precision, because it's the only reason to fail for newBatch
 	if _, err := time.ParseDuration("1" + cfg.Precision); err != nil {
-		return nil, err
+		log.Panicf("Can't parse Precision `%s`: %v", cfg.Precision, err)
 	}
 
 	w := &Writer{
