@@ -104,8 +104,10 @@ func (r *standardRegistry) register(name string, i interface{}) error {
 		return DuplicateMetric(name)
 	}
 	switch i.(type) {
-	case Gauge:
+	case Gauge, Counter:
 		r.metrics[name] = i
+	default:
+		log.Printf("[Never] Unkwnown type to register: %T", i)
 	}
 	return nil
 }
