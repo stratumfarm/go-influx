@@ -8,6 +8,8 @@ import (
 	"github.com/influxdata/influxdb/client/v2"
 )
 
+const forceChanLen = 30
+
 //Config represents config values stored in json
 type Config struct {
 	Endpoint      string `json:"endpoint"`
@@ -55,7 +57,7 @@ func NewWriter(cfg Config) (*Writer, error) {
 		database:      cfg.Database,
 		label:         cfg.Label,
 		host:          cfg.Host,
-		messageCh:     make(chan interface{}, 1024),
+		messageCh:     make(chan interface{}, cfg.BatchCount+100), //TODO 100?
 		BatchInterval: mustParseDuration(cfg.BatchInterval),
 		BatchCount:    cfg.BatchCount,
 		Precision:     cfg.Precision,
@@ -79,21 +81,24 @@ func (s *Writer) Close() error {
 
 //Write accepts metric and put it to the queue to write
 func (s *Writer) Write(p interface{}) {
+	if len(s.messageCh) >= cap(s.messageCh) {
+		return
+	}
 	if p != nil {
 		s.messageCh <- p
 	}
 }
 
 func (s *Writer) worker() {
-	batch := newBatch(s.database, s.Precision)
 	defer s.wg.Done()
+	batch := newBatch(s.database, s.Precision)
 
 	tags := map[string]string{
 		"label": s.label,
 		"host":  s.host,
 	}
 
-	forceWriteChan := make(chan bool, 3)
+	forceWriteChan := make(chan bool, forceChanLen)
 	go func() {
 		for {
 			time.Sleep(s.BatchInterval)

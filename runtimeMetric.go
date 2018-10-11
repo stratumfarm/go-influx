@@ -30,6 +30,8 @@ func newRuntimeMetric(r Registry) Metric {
 		switch metric := value.(type) {
 		case Gauge:
 			values[name] = metric.Value()
+		case Counter:
+			values[name] = metric.Count()
 		}
 	})
 	return runtimeMetric{
