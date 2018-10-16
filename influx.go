@@ -81,11 +81,13 @@ func (s *Writer) Close() error {
 
 //Write accepts metric and put it to the queue to write
 func (s *Writer) Write(p interface{}) {
-	if len(s.messageCh) >= cap(s.messageCh) {
+	if p == nil {
 		return
 	}
-	if p != nil {
-		s.messageCh <- p
+	select {
+	case s.messageCh <- p:
+	default:
+		log.Printf("[WARN] Discarded influx message, queue is full %d", len(s.messageCh))
 	}
 }
 
@@ -119,7 +121,10 @@ func (s *Writer) worker() {
 			}
 			count += s.processMessage(m, batch, tags)
 			if count > s.BatchCount {
-				forceWriteChan <- true
+				select {
+				case forceWriteChan <- true:
+				default:
+				}
 			}
 		case <-forceWriteChan:
 			if count == 0 {
