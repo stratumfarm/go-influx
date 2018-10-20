@@ -84,10 +84,16 @@ func (s *Writer) Write(p interface{}) {
 	if p == nil {
 		return
 	}
+	if len(s.messageCh) >= cap(s.messageCh) {
+		log.Printf("[WARN] Discarded influx message, queue is full %d", len(s.messageCh))
+		return
+	}
+
 	select {
 	case s.messageCh <- p:
 	default:
-		log.Printf("[WARN] Discarded influx message, queue is full %d", len(s.messageCh))
+		log.Printf("[ERROR] Discarded influx message, len didn't protect, queue is full %d", len(s.messageCh))
+
 	}
 }
 
