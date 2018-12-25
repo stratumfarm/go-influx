@@ -2,6 +2,7 @@ package influx
 
 import (
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -77,6 +78,13 @@ func (s *Writer) Close() error {
 	close(s.messageCh)
 	s.wg.Wait() //let's send the rest
 	return s.client.Close()
+}
+
+//WriteSample writes with given probability
+func (s *Writer) WriteSample(p interface{}, prob float64) {
+	if rand.Float64() < prob {
+		s.Write(p)
+	}
 }
 
 //Write accepts metric and put it to the queue to write
